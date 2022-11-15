@@ -1,0 +1,14 @@
+# Fundamentals
+
+laspy
+numpy
+pandas
+opencv-python
+
+# UI for selecting files
+
+tk
+
+# Point cloud visualizer
+
+open3d
