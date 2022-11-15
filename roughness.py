@@ -28,7 +28,7 @@ def open_folder():
 def main():
   file_name = open_folder();
   pcCST = pcClass.PointCloudCST(file_name);
-  pcCST.demo();
+  pcCST.calc_roughness();
   return;
 
 if __name__ == "__main__":

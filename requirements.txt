@@ -12,3 +12,7 @@ tk
 # Point cloud visualizer
 
 open3d
+
+# For loading
+
+tqdm

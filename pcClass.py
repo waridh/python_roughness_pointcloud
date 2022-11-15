@@ -2,6 +2,8 @@ import numpy as np
 import laspy as lp
 import open3d as o3d
 
+from tqdm import tqdm
+
 class PointCloudCST():
   """
   This class will be used to store the point cloud file. This way, we keep
@@ -37,4 +39,25 @@ class PointCloudCST():
     We are also creating a colour output. Going to have to come up with
     something for this one.
     """
+    debug = True;
+    # Making a temporary array for this calculations
+    points = np.vstack((self.point_cloud.x, self.point_cloud.y,
+                       self.point_cloud.z)).transpose();
+    distance_buffer_array = np.zeros(points.shape);
+    buffer_coord = np.zeros((1, 3));
+    # Try double for looping to check for point clouds in range.
+    for i in tqdm(range(points.shape[0])):
+      # Need to now look for points that are under a certain distance from the
+      # point being indexed.
+      # This portion of the code is very slow, you need to parallelize it.
+      buffer_coord = points[i, :];
+      distance_buffer_array = points - buffer_coord;
+      bufferout = np.linalg.norm(distance_buffer_array, axis=1);
+      
+      # Debugging 1
+      if i == 0 and debug:
+        print(points);
+        print(distance_buffer_array);
+        print(bufferout);
+        
     return;
