@@ -49,6 +49,8 @@ class PointCloudCST():
     
     We are also creating a colour output. Going to have to come up with
     something for this one.
+    
+    TODO: Convert the for loop into a starmap multiprocessing.
     """
     debug = True;
     # Making a temporary array for this calculations
