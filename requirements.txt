@@ -4,6 +4,7 @@ laspy
 numpy
 pandas
 opencv-python
+scipy
 
 # UI for selecting files
 
@@ -12,6 +13,7 @@ tk
 # Point cloud visualizer
 
 open3d
+matplotlib
 
 # For loading
 

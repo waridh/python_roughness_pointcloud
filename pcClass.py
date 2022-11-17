@@ -1,8 +1,13 @@
 import numpy as np
 import laspy as lp
 import open3d as o3d
+import matplotlib.pyplot as plt
+
+import roughness_configuration
+import math
 
 from tqdm import tqdm
+from scipy.linalg import lstsq
 
 class PointCloudCST():
   """
@@ -29,6 +34,12 @@ class PointCloudCST():
     
     o3d.visualization.draw_geometries([pcd]);
     
+  def shortest_distance(self, x1, y1, z1, a, b, c, d):
+     
+    d = abs((a * x1 + b * y1 + c * z1 + d))
+    e = (math.sqrt(a * a + b * b + c * c))
+    return d/e
+    
   def calc_roughness(self):
     """
     IRIgeo = sqrt(((n * sum(di^2)) - (sum(di)^2))/(n * (n - 1)))
@@ -54,10 +65,88 @@ class PointCloudCST():
       distance_buffer_array = points - buffer_coord;
       bufferout = np.linalg.norm(distance_buffer_array, axis=1);
       
+      # Getting the index of the values that are smaller than the size we are
+      # using for plane.
+      buffer_idx = np.flatnonzero(bufferout < roughness_configuration.baselength);
+      
+      # Getting points close to the point being analysed.
+      near_points = points[buffer_idx, :];
+      
+      # Making a best fitting least square plane using the points
+      A = near_points.copy();
+      B = A.copy()[:, 2];
+      A[:, 2] = 1;
+      
+      # "solution: %f x + %f y + %f = z" % (fit[0], fit[1], fit[2])
+      fit, residual, rnk, s = lstsq(A, B);
+      
+      distance = self.shortest_distance(
+        points[i, 0], points[i, 1], points[i, 2], fit[0], fit[1], -1, fit[2]
+                                        )
+      
       # Debugging 1
       if i == 0 and debug:
         print(points);
         print(distance_buffer_array);
         print(bufferout);
+        print(buffer_idx);
+        print(near_points);
+        print(A);
+        print(B);
+        print(fit);
+        print(residual);
+        print(rnk);
+        print(distance);
+        plt.figure();
+        ax = plt.subplot(111, projection='3d');
+        # "solution: %f x + %f y + %f = z" % (fit[0], fit[1], fit[2])
+        ax.scatter(near_points[:, 0], near_points[:, 1], near_points[:, 2],
+                   color='b');
+        # plot plane
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        X,Y = np.meshgrid(np.arange(xlim[0], xlim[1]),
+                          np.arange(ylim[0], ylim[1]))
+        Z = np.zeros(X.shape)
+        for r in range(X.shape[0]):
+            for c in range(X.shape[1]):
+                Z[r,c] = fit[0] * X[r,c] + fit[1] * Y[r,c] + fit[2]
+        ax.plot_wireframe(X,Y,Z, color='k')
+
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        plt.show();
         
     return;
+  
+  def roughness_loop(self, i, points):
+    distance_buffer_array = np.zeros(points.shape);
+    buffer_coord = np.zeros((1, 3));
+    # Need to now look for points that are under a certain distance from the
+    # point being indexed.
+    # This portion of the code is very slow, you need to parallelize it.
+    buffer_coord = points[i, :];
+    distance_buffer_array = points - buffer_coord;
+    bufferout = np.linalg.norm(distance_buffer_array, axis=1);
+    
+    # Getting the index of the values that are smaller than the size we are
+    # using for plane.
+    buffer_idx = np.flatnonzero(bufferout < roughness_configuration.baselength);
+    
+    # Getting points close to the point being analysed.
+    near_points = points[buffer_idx, :];
+    
+    # Making a best fitting least square plane using the points
+    A = near_points.copy();
+    B = A.copy()[:, 2];
+    A[:, 2] = 1;
+    
+    # "solution: %f x + %f y + %f = z" % (fit[0], fit[1], fit[2])
+    fit, residual, rnk, s = lstsq(A, B);
+    
+    distance = self.shortest_distance(
+      points[i, 0], points[i, 1], points[i, 2], fit[0], fit[1], -1, fit[2]
+                                      )
+    return distance;
+      
