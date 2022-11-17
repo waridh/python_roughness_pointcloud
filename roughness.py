@@ -28,7 +28,7 @@ def open_folder():
 def main():
   file_name = open_folder();
   pcCST = pcClass.PointCloudCST(file_name);
-  pcCST.calc_roughness();
+  pcCST.open3d_octree_test();
   return;
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ import numpy as np
 import laspy as lp
 import open3d as o3d
 import matplotlib.pyplot as plt
+import multiprocessing as mp
 
 import roughness_configuration
 import math
@@ -22,7 +23,12 @@ class PointCloudCST():
     Args:
         cloud_path (string): Address of the file we are reading.
     """
+    self.cloud_path = cloud_path;
     self.point_cloud = lp.read(cloud_path);
+    self.points = np.vstack((self.point_cloud.x, self.point_cloud.y,
+                       self.point_cloud.z)).transpose();
+    self.o3d_point_cloud = o3d.geometry.PointCloud();
+    self.o3d_point_cloud.points = o3d.utility.Vector3dVector(self.points);
     return;
   
   def demo(self):
@@ -39,6 +45,29 @@ class PointCloudCST():
     d = abs((a * x1 + b * y1 + c * z1 + d))
     e = (math.sqrt(a * a + b * b + c * c))
     return d/e
+  
+  def open3d_octree_test(self):
+    """
+    IRIgeo = sqrt(((n * sum(di^2)) - (sum(di)^2))/(n * (n - 1)))
+    Above is the equation that we will use to calculate the roughness of the pc.
+    di is the deviation in elevation of the ith element from the simple linear
+    regression for 3.5m around the point.
+    
+    We are also creating a colour output. Going to have to come up with
+    something for this one.
+    
+    """
+    debug = True;
+    
+    curr_max_depth = 8;
+    
+    octree = o3d.geometry.Octree(max_depth = curr_max_depth);
+    octree.convert_from_point_cloud(self.o3d_point_cloud);
+    o3d.visualization.draw_geometries([self.o3d_point_cloud]);
+    o3d.visualization.draw_geometries([octree]);
+    
+        
+    return;
     
   def calc_roughness(self):
     """
@@ -122,7 +151,52 @@ class PointCloudCST():
         
     return;
   
-  def roughness_loop(self, i, points):
+  def calc_roughness_mp(self):
+    """
+    Multiprocessing version of the calculate roughness algorithm. Should be able
+    to complete the calc in less than an hour vs the 22 hours for original.
+    """
+    debug = True;
+    # Making a temporary array for this calculations
+    points_list = [];
+    for i in range(len(self.point_cloud.x)):
+      points_list.append([self.point_cloud.x[i], self.point_cloud.y[i],
+                     self.point_cloud.z[i]])
+    # Try double for looping to check for point clouds in range.
+    
+    print("Opening multiprocessing pool.")
+    
+    mp.freeze_support();
+    cores = mp.cpu_count() - 1;
+    with mp.Pool(cores) as p:  # Opening up more process pools
+      print("Calculating the roughness.");
+      # Running parallelization with starmap for significant speed increase.
+      para_list = p.starmap(self.roughness_loop,
+                                tqdm(
+                                  [
+                                    (
+                                      i, points_list
+                                    ) for i in range(len(self.point_cloud.x))
+                                  ],
+                                    total=len(self.point_cloud.x)))
+      print('Completed the processing, closing pools')
+      print(para_list);
+    p.join();
+  
+  def roughness_loop(self, i, points_list):
+    """
+    The process of finding the roughness for each point
+
+    Args:
+        i (int): index of the point being viewed
+        points (numpy[N, 3] array): The input point cloud's coordinates. Used
+        for roughness calculations.
+
+    Returns:
+        float: The distance that the point is away from the least square fit
+        plane. This represents the roughness of the point.
+    """
+    points = np.array(points_list);
     distance_buffer_array = np.zeros(points.shape);
     buffer_coord = np.zeros((1, 3));
     # Need to now look for points that are under a certain distance from the
