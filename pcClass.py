@@ -29,6 +29,7 @@ class PointCloudCST():
                        self.point_cloud.z)).transpose();
     self.o3d_point_cloud = o3d.geometry.PointCloud();
     self.o3d_point_cloud.points = o3d.utility.Vector3dVector(self.points);
+    
     return;
   
   def demo(self):
@@ -46,6 +47,39 @@ class PointCloudCST():
     e = (math.sqrt(a * a + b * b + c * c))
     return d/e
   
+  def downsampler(self):
+    """
+    When we need to downsample the code.
+    """
+    self.o3d_point_cloud = self.o3d_point_cloud.voxel_down_sample(
+      voxel_size=1
+      );
+    self.points = np.asarray(self.o3d_point_cloud.points);
+    
+  def make_kdtrees(self):
+    """
+    Create a kd tree when needed
+    """
+    self.pcd_tree = o3d.geometry.KDTreeFlann(self.o3d_point_cloud);
+    
+  def visualize_kdtree(self):
+    # Initialize a visualizer object
+    vis = o3d.visualization.Visualizer()
+    # Create a window, name it and scale it
+    vis.create_window(window_name='Cloud Visualize', width=800, height=600)
+
+    # Set background color to black
+    opt = vis.get_render_option()
+    opt.background_color = np.asarray([0, 0, 0])
+
+    # Add the point cloud to the visualizer
+    vis.add_geometry(self.o3d_point_cloud)
+
+    # Run the visualizater
+    vis.run()
+    # Once the visualizer is closed destroy the window and clean up
+    vis.destroy_window()
+  
   def open3d_octree_test(self):
     """
     IRIgeo = sqrt(((n * sum(di^2)) - (sum(di)^2))/(n * (n - 1)))
@@ -56,15 +90,23 @@ class PointCloudCST():
     We are also creating a colour output. Going to have to come up with
     something for this one.
     
+    some powerful functions. o3d.geometry.KDTreeFlann(name_of_3d_object);
+    search_radius_vector_3d will then search for all neighbours within a certain
+    radius.
+    
     """
     debug = True;
     
-    curr_max_depth = 8;
+    self.downsampler();
     
-    octree = o3d.geometry.Octree(max_depth = curr_max_depth);
-    octree.convert_from_point_cloud(self.o3d_point_cloud);
-    o3d.visualization.draw_geometries([self.o3d_point_cloud]);
-    o3d.visualization.draw_geometries([octree]);
+    self.make_kdtrees();
+    
+    self.visualize_kdtree();
+    
+    [k, idx, _] = self.pcd_tree.search_radius_vector_3d(self.points[0, :], 3);
+    print(idx);
+    output = self.points[idx[:], :];
+    print(output);
     
         
     return;
@@ -226,3 +268,49 @@ class PointCloudCST():
                                       )
     return distance;
       
+# Params class containing the counter and the main LineSet object holding all line subsets
+# class params():
+
+#   counter = 0
+#   full_line_set = o3d.geometry.LineSet()
+
+#   # Callback function for generating the LineSets from each neighborhood
+#   def build_edges(vis):
+#     # Run this part for each point in the point cloud
+#     if params.counter < len(points):
+#       # Find the K-nearest neighbors for the current point. In our case we use 6
+#       [k, idx, _] = pcd_tree.search_knn_vector_3d(points[params.counter,:], 6)
+#       # Get the neighbor points from the indices
+#       points_temp = points[idx,:]
+      
+#       # Create the neighbours indices for the edge array
+#       neighbours_num = np.arange(len(points_temp))
+#       # Create a temp array for the center point indices
+#       point_temp_num = np.zeros(len(points_temp))
+#       # Create the edges array as a stack from the current point index array and the neighbor indices array
+#       edges = np.vstack((point_temp_num,neighbours_num)).T
+
+#       # Create a LineSet object and give it the points as nodes together with the edges
+#       line_set = o3d.geometry.LineSet()
+#       line_set.points = o3d.utility.Vector3dVector(points_temp)
+#       line_set.lines = o3d.utility.Vector2iVector(edges)
+#       # Color the lines by either using red color for easier visualization or with the colors from the point cloud
+#       line_set.paint_uniform_color([1, 0, 0])
+#       # line_set.paint_uniform_color(colors[params.counter,:])
+      
+#       # Add the current LineSet to the main LineSet
+#       params.full_line_set+=line_set
+      
+#       # if the counter just started add the LineSet geometry
+#       if params.counter==0:
+#         vis.add_geometry(params.full_line_set)
+#       # else update the geometry 
+#       else:
+#         vis.update_geometry(params.full_line_set)
+#       # update the render and counter
+#       vis.update_renderer()
+#       params.counter +=1
+#     else:
+#         # if the all point have been used reset the counter and clear the lines
+#         params.counter=0
+#         params.full_line_set.clear()
