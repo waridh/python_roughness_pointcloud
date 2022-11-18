@@ -52,7 +52,7 @@ class PointCloudCST():
     When we need to downsample the code.
     """
     self.o3d_point_cloud = self.o3d_point_cloud.voxel_down_sample(
-      voxel_size=1
+      voxel_size=(roughness_configuration.baselength/3)
       );
     self.points = np.asarray(self.o3d_point_cloud.points);
     
