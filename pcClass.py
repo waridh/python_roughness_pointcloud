@@ -32,6 +32,41 @@ class PointCloudCST():
     
     return;
   
+  def print2las(self, output_path, mode="roughness"):
+    rgbinfo = (255,0,255)
+    red, green, blue = rgbinfo       
+    classify = 10
+              
+    point_count = self.points.shape[0]
+    print(self.points.shape)            
+    print(f'Main las file points = {point_count}')
+    filler = np.empty((point_count,1), dtype = int)
+    if mode == "roughness":
+      
+      pointrecord = lp.create(file_version="1.2", point_format=3)
+      pointrecord.header.offsets = np.min(self.points, axis=0)
+      pointrecord.header.scales = [0.001, 0.001, 0.001]
+      pointrecord.header.generating_software = "SSI_RoadScan"
+      pointrecord.header.point_count = point_count
+      pointrecord = lp.create(point_format=3,file_version="1.2") 
+      pointrecord.x = self.points[:,0];
+      pointrecord.y = self.points[:,1];
+      pointrecord.z = self.points[:,2];
+      filler.fill(classify)
+      pointrecord.classification = filler[:,0]
+      
+      d_max = max(self.roughness_array);
+      d_min = min(self.roughness_array);
+      d_ave = ((d_max+d_min)/2);
+      pointrecord.red = self.roughness_array / d_ave * 127;
+      filler.fill(blue)
+      pointrecord.blue = filler[:,0]
+      filler.fill(green)
+      pointrecord.green = filler[:,0]
+      pointrecord.intensity = self.point_cloud.intensity;
+      pointrecord.write(output_path);
+      return;
+  
   def demo(self):
     points = np.vstack((self.point_cloud.x, self.point_cloud.y,
                        self.point_cloud.z)).transpose();
@@ -109,6 +144,63 @@ class PointCloudCST():
     print(output);
     
         
+    return;
+    
+  def roughness2(self):
+    
+    debug = True;
+    
+    #self.downsampler();
+    
+    self.make_kdtrees();
+    
+    self.roughness_array = np.zeros(self.points.shape[0]);
+    
+    for i in tqdm(range(self.points.shape[0])):
+      
+      self.roughness2_loop(i);
+      
+      if i == 30:
+        print(self.roughness_array[i]);
+        
+    # mp.freeze_support();
+    # cores = mp.cpu_count() - 1;
+    # with mp.Pool(cores) as p:  # Opening up more process pools
+    #   print("Calculating the roughness.");
+    #   # Running parallelization with starmap for significant speed increase.
+    #   p.map(
+    #     self.roughness2_loop, range(self.points.shape[0])
+    #     );
+    # print('Completed the processing, closing pools')
+    # p.join();
+        
+    print(self.roughness_array);
+      
+  def roughness2_loop(self, i):
+    
+    buffer_coord = np.zeros((1, 3));
+    # Need to now look for points that are under a certain distance from the
+    # point being indexed.
+    # This portion of the code is very slow, you need to parallelize it.
+    
+    # Getting points close to the point being analysed.
+    [k, idx, _] = self.pcd_tree.search_radius_vector_3d(self.points[i, :], roughness_configuration.baselength);
+    
+    # Making a best fitting least square plane using the points
+    A = self.points[idx[:], :].copy();
+    B = A.copy()[:, 2];
+    A[:, 2] = 1;
+    
+    # "solution: %f x + %f y + %f = z" % (fit[0], fit[1], fit[2])
+    fit, residual, rnk, s = lstsq(A, B);
+    
+    distance = self.shortest_distance(
+      self.points[i, 0], self.points[i, 1], self.points[i, 2], fit[0], fit[1], -1, fit[2]
+                                      )
+    
+    
+    self.roughness_array[i] = distance;
+    
     return;
     
   def calc_roughness(self):

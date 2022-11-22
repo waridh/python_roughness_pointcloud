@@ -5,7 +5,7 @@ import os
 import pcClass
 
 from tkinter import Tk
-from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import askopenfilename, asksaveasfilename
 
 def open_folder():
   """
@@ -25,10 +25,30 @@ def open_folder():
   print("You have chosen to open the file:\n%s" % (file_name));
   return file_name;
 
+def open_folder2():
+  """
+  This function opens a window that lets the user select the file that is going
+  to be analysed.
+
+  Returns:
+      string: The address of the file that is being analysed. Will be a las or
+      laz file.
+  """
+  
+  Tk().withdraw();
+  file_name = asksaveasfilename(filetypes=[
+    ("Lidar files", "*.las"), ("All files", "*")
+    ], title="Save to las");
+  
+  print("You have chosen to save to:\n%s" % (file_name));
+  return file_name;
+
 def main():
   file_name = open_folder();
   pcCST = pcClass.PointCloudCST(file_name);
-  pcCST.open3d_octree_test();
+  pcCST.roughness2();
+  save_name = open_folder2();
+  pcCST.print2las(save_name);
   return;
 
 if __name__ == "__main__":
