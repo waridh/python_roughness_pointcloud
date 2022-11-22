@@ -6,6 +6,7 @@ import pcClass
 
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename, asksaveasfilename
+from tkinter import simpledialog
 
 def open_folder():
   """
@@ -18,12 +19,24 @@ def open_folder():
   """
   
   Tk().withdraw();
-  file_name = askopenfilename(filetypes=[("Lidar files", "*.las"),
-                                          ("Compressed Lidar files", 
-                                          "*.laz"), ("All files", "*")]);
+  file_name = askopenfilename(
+    filetypes=[
+      ("Lidar files", "*.las"),
+      ("Compressed Lidar files", "*.laz"),
+      ("All files", "*")
+      ],
+    initialdir="inputs/"
+    );
   
   print("You have chosen to open the file:\n%s" % (file_name));
   return file_name;
+
+def input_radius():
+  string = simpledialog.askfloat(
+    title="Roughness plane raidus search",
+    prompt="What is the radius for constructing the least square plane?");
+  print("The radius chosen was:", string);
+  return string;
 
 def open_folder2():
   """
@@ -36,9 +49,13 @@ def open_folder2():
   """
   
   Tk().withdraw();
-  file_name = asksaveasfilename(filetypes=[
+  file_name = asksaveasfilename(
+    filetypes=[
     ("Lidar files", "*.las"), ("All files", "*")
-    ], title="Save to las");
+    ],
+    title="Save to las",
+    initialdir="outputs/"
+    );
   
   if file_name.endswith('.las'):
     pass;
@@ -50,7 +67,8 @@ def open_folder2():
 
 def main():
   file_name = open_folder();
-  pcCST = pcClass.PointCloudCST(file_name);
+  lstsqrplanradius = input_radius();
+  pcCST = pcClass.PointCloudCST(file_name, lstsqrplanradius);
   pcCST.roughness2();
   save_name = open_folder2();
   pcCST.print2las(save_name);
