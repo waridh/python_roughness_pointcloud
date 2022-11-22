@@ -33,7 +33,7 @@ class PointCloudCST():
     return;
   
   def print2las(self, output_path, mode="roughness"):
-    rgbinfo = (255,0,255)
+    rgbinfo = (255,0,0)
     red, green, blue = rgbinfo       
     classify = 10
               
@@ -58,12 +58,13 @@ class PointCloudCST():
       d_max = max(self.roughness_array);
       d_min = min(self.roughness_array);
       d_ave = ((d_max+d_min)/2);
-      pointrecord.red = self.roughness_array / d_ave * 127;
+      filler.fill(red)
+      pointrecord.red = filler[:, 0]
       filler.fill(blue)
       pointrecord.blue = filler[:,0]
       filler.fill(green)
-      pointrecord.green = filler[:,0]
-      pointrecord.intensity = self.point_cloud.intensity;
+      pointrecord.green = self.point_cloud.intensity;
+      pointrecord.intensity = self.roughness_array / d_ave * 127;
       pointrecord.write(output_path);
       return;
   
