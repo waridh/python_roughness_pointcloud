@@ -40,6 +40,11 @@ def open_folder2():
     ("Lidar files", "*.las"), ("All files", "*")
     ], title="Save to las");
   
+  if file_name.endswith('.las'):
+    pass;
+  else:
+    file_name = file_name + '.las';
+  
   print("You have chosen to save to:\n%s" % (file_name));
   return file_name;
 

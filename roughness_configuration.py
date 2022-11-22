@@ -1,3 +1,3 @@
 section_length = 100; # In meters
 
-baselength = 3.5; # In meters too.
+baselength = 0.35; # In meters too.
