@@ -1,4 +1,5 @@
 import numpy as np
+import scipy as sp
 import laspy as lp
 import open3d as o3d
 import matplotlib.pyplot as plt
@@ -9,6 +10,58 @@ import math
 
 from tqdm import tqdm
 from scipy.linalg import lstsq
+
+def roughness2_loop(i, points, lstsqrplnrad, ckd_tree):
+  """
+  The loop code, in which we are finding the roughness value of one point.
+
+  Args:
+      i (int): The index of the point that is being analysed right now.
+  """
+  
+  buffer_coord = np.zeros((1, 3));
+  # Need to now look for points that are under a certain distance from the
+  # point being indexed.
+  # This portion of the code is very slow, you need to parallelize it.
+  
+  # Getting points close to the point being analysed.
+  idx = ckd_tree.query_ball_point(points[i, :], lstsqrplnrad);
+  
+  # Making a best fitting least square plane using the points
+  A = points[idx[:], :].copy();
+  B = A.copy()[:, 2];
+  A[:, 2] = 1;
+  
+  # "solution: %f x + %f y + %f = z" % (fit[0], fit[1], fit[2])
+  fit, residual, rnk, s = lstsq(A, B);
+  
+  distance = shortest_distance(
+    points[i, 0], points[i, 1], points[i, 2], fit[0], fit[1], -1, fit[2]
+                                    )
+  
+  return distance;
+
+def shortest_distance(x1, y1, z1, a, b, c, d):
+    """
+    Simply calculates the shortest distance between a point and a hyperplane.
+
+    Args:
+        x1 (float): The x coordinate of the point
+        y1 (_float_): The y coordinate of the point
+        z1 (_float_): The z coordinate of the point
+        a (_float_): The coefficient of the plane that belongs to x.
+        b (_float_): The coefficient of the plane that belongs to y.
+        c (_float_): The coefficient of the plane that belongs to z.
+        d (_float_): The hanging coefficient of the plane equation.
+
+    Returns:
+        (_float_): The distance from the point decribed in the input to the
+        plane given in the input.
+    """
+     
+    d = abs((a * x1 + b * y1 + c * z1 + d))
+    e = (math.sqrt(a * a + b * b + c * c))
+    return d/e
 
 class PointCloudCST():
   """
@@ -88,27 +141,7 @@ class PointCloudCST():
     
     o3d.visualization.draw_geometries([pcd]);
     
-  def shortest_distance(self, x1, y1, z1, a, b, c, d):
-    """
-    Simply calculates the shortest distance between a point and a hyperplane.
-
-    Args:
-        x1 (float): The x coordinate of the point
-        y1 (_float_): The y coordinate of the point
-        z1 (_float_): The z coordinate of the point
-        a (_float_): The coefficient of the plane that belongs to x.
-        b (_float_): The coefficient of the plane that belongs to y.
-        c (_float_): The coefficient of the plane that belongs to z.
-        d (_float_): The hanging coefficient of the plane equation.
-
-    Returns:
-        (_float_): The distance from the point decribed in the input to the
-        plane given in the input.
-    """
-     
-    d = abs((a * x1 + b * y1 + c * z1 + d))
-    e = (math.sqrt(a * a + b * b + c * c))
-    return d/e
+  
   
   def downsampler(self):
     """
@@ -124,6 +157,11 @@ class PointCloudCST():
     Create a kd tree when needed
     """
     self.pcd_tree = o3d.geometry.KDTreeFlann(self.o3d_point_cloud);
+    
+  def make_ckdtrees(self):
+    """Creates the supperrior ckd tree.
+    """
+    self.ckd_tree = sp.spatial.cKDTree(self.points);
     
   def visualize_kdtree(self):
     """
@@ -195,62 +233,36 @@ class PointCloudCST():
     
     #self.downsampler();
     
-    self.make_kdtrees();
+    self.make_ckdtrees();
     
     self.roughness_array = np.zeros(self.points.shape[0]);
     
-    for i in tqdm(range(self.points.shape[0])):
+    # for i in tqdm(range(self.points.shape[0])):
       
-      self.roughness2_loop(i);
+    #   self.roughness2_loop(i);
       
-      if (i == 30) and debug:
-        print(self.roughness_array[i]);
+    #   if (i == 30) and debug:
+    #     print(self.roughness_array[i]);
         
-    # mp.freeze_support();
-    # cores = mp.cpu_count() - 1;
-    # with mp.Pool(cores) as p:  # Opening up more process pools
-    #   print("Calculating the roughness.");
-    #   # Running parallelization with starmap for significant speed increase.
-    #   p.map(
-    #     self.roughness2_loop, range(self.points.shape[0])
-    #     );
-    # print('Completed the processing, closing pools')
-    # p.join();
         
-    print(self.roughness_array);
-    
-      
-  def roughness2_loop(self, i):
-    """
-    The loop code, in which we are finding the roughness value of one point.
-
-    Args:
-        i (int): The index of the point that is being analysed right now.
-    """
-    
-    buffer_coord = np.zeros((1, 3));
-    # Need to now look for points that are under a certain distance from the
-    # point being indexed.
-    # This portion of the code is very slow, you need to parallelize it.
-    
-    # Getting points close to the point being analysed.
-    [k, idx, _] = self.pcd_tree.search_radius_vector_3d(self.points[i, :], self.lstsqrplnrad);
-    
-    # Making a best fitting least square plane using the points
-    A = self.points[idx[:], :].copy();
-    B = A.copy()[:, 2];
-    A[:, 2] = 1;
-    
-    # "solution: %f x + %f y + %f = z" % (fit[0], fit[1], fit[2])
-    fit, residual, rnk, s = lstsq(A, B);
-    
-    distance = self.shortest_distance(
-      self.points[i, 0], self.points[i, 1], self.points[i, 2], fit[0], fit[1], -1, fit[2]
-                                      )
-    
-    self.roughness_array[i] = distance;
-    
-    return;
+    mp.freeze_support();
+    cores = mp.cpu_count() - 1;
+    with mp.Pool(cores) as p:  # Opening up more process pools
+      print("Calculating the roughness.");
+      # Running parallelization with starmap for significant speed increase.
+      rough_buffer = p.starmap(roughness2_loop,
+                              tqdm(
+                                [
+                                  (
+                                    i, self.points, self.lstsqrplnrad,
+                                    self.ckd_tree
+                                  ) for i in range(self.points.shape[0])
+                                ],
+                                   total=self.points.shape[0]))
+    print('Completed the processing, closing pools')
+    p.join();
+        
+    self.roughness_array = np.array(rough_buffer);
   
   
   def calc_roughness_mp(self):
