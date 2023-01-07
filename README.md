@@ -1,6 +1,6 @@
-# cst_roughness_pointcloud
+# python_roughness_pointcloud
 
-Per request of Maged, implementing roughness calculations on point clouds
+A python implementation of roughness calculations on point clouds. It will create outputs that are identical to the CloudCompare version.
 
 ## Requirements
 
