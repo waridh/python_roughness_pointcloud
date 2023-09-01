@@ -1,3 +1,1 @@
-# Roughness
-
-## Colour implementation
+# Implementation

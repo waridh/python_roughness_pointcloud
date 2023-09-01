@@ -66,12 +66,12 @@ def open_folder2():
   return file_name;
 
 def main():
-  file_name = open_folder();
-  lstsqrplanradius = input_radius();
-  pcCST = pcClass.PointCloudCST(file_name, lstsqrplanradius);
-  pcCST.roughness2();
-  save_name = open_folder2();
-  pcCST.print2las(save_name);
+  file_name = open_folder();  # Getting the LAS input point cloud
+  lstsqrplanradius = input_radius();  # Getting radius for input size
+  pcCST = pcClass.PointCloudCST(file_name, lstsqrplanradius); # make pc obj
+  pcCST.roughness2(); # Running roughness calculations
+  save_name = open_folder2(); # Choosing save location
+  pcCST.print2las(save_name); # Saving the program
   return;
 
 if __name__ == "__main__":
