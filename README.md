@@ -18,4 +18,6 @@ there simply use the `pip install -r requirements.txt` command.
 ## Usage
 
 1. Open a terminal and navigate to the root directory.
-2. Run launch the environment.
+2. Launch the environment.
+3. Run the following command: `python roughness.py`
+4. Follow the prompt and choose the desired .las point cloud file that will be processed.
